@@ -1,2 +1,2 @@
 <?xml version="1.0" encoding="utf-8"?>
-<merger version="3"><dataSet config="main"><source path="/home/alexandreriehl/Repos/algorithmtest/sdk/src/main/shaders"/></dataSet><dataSet config="debug"><source path="/home/alexandreriehl/Repos/algorithmtest/sdk/src/debug/shaders"/></dataSet></merger>
+<merger version="3"><dataSet config="main"><source path="/Users/geoffrey/workspace/surfImpl/sdk/src/main/shaders"/></dataSet><dataSet config="debug"><source path="/Users/geoffrey/workspace/surfImpl/sdk/src/debug/shaders"/></dataSet></merger>

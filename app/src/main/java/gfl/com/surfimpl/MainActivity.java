@@ -58,26 +58,26 @@ import java.util.stream.Collectors;
 public class MainActivity extends Activity implements CameraBridgeViewBase.CvCameraViewListener2 {
 
     private static final String TAG = "OCVSample::Activity";
-    private int w, h;
+    private static final String AKAZE_ALGORITHM = "AKAZE";
+    private static final String ORB_ALGORITHM = "ORB";
+
     private CameraBridgeViewBase mOpenCvCameraView;
     private ToggleButton mToogleButton;
-    TextView tvName;
-    Scalar RED = new Scalar(255, 0, 0);
-    Scalar GREEN = new Scalar(0, 255, 0);
-    FeatureDetector detector;
-    DescriptorExtractor descriptor;
-    DescriptorMatcher matcher;
-    Mat descriptors2, descriptors1;
-    Mat img1;
-    MatOfKeyPoint keypoints1, keypoints2;
+    private TextView tvName;
+    private Scalar RED = new Scalar(255, 0, 0);
+    private Scalar GREEN = new Scalar(0, 255, 0);
+    private FeatureDetector detector;
+    private DescriptorExtractor descriptor;
+    private DescriptorMatcher matcher;
+    private Mat descriptors2, descriptors1;
+    private Mat img1;
+    private MatOfKeyPoint keypoints1, keypoints2;
 
-    Long timestamp1;
+    private Long timestamp1;
 
-    static Integer MAX_DATA_RECORDING = 10;
-    Integer dataCounter = 0;
-    List<String[]> data = new ArrayList<String[]>();
-
-    int index = 0;
+    private static Integer MAX_DATA_RECORDING = 1000;
+    private Integer dataCounter = 0;
+    private List<String[]> data = new ArrayList<>();
 
     static {
         if (!OpenCVLoader.initDebug())
@@ -111,19 +111,21 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
     };
 
     /**
+     *
      */
     private void initializeOpenCVDependencies() throws IOException {
         mOpenCvCameraView.enableView();
 
+        //select the detection algorithm
         detector = FeatureDetector.create(FeatureDetector.AKAZE);
         descriptor = DescriptorExtractor.create(DescriptorExtractor.AKAZE);
 
         matcher = DescriptorMatcher.create(DescriptorMatcher.BRUTEFORCE_HAMMING);
 
         img1 = new Mat();
-        AssetManager assetManager = getAssets();
-        InputStream istr = assetManager.open("a.jpeg");
-        Bitmap bitmap = BitmapFactory.decodeStream(istr);
+        final AssetManager assetManager = getAssets();
+        final InputStream istr = assetManager.open("a.jpeg");
+        final Bitmap bitmap = BitmapFactory.decodeStream(istr);
         Utils.bitmapToMat(bitmap, img1);
         Imgproc.cvtColor(img1, img1, Imgproc.COLOR_RGB2GRAY);
         img1.convertTo(img1, 0); //converting the image to match with the type of the cameras image
@@ -153,7 +155,7 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
         mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.tutorial1_activity_java_surface_view);
         mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
-        mToogleButton = (ToggleButton)findViewById(R.id.buttonEnable);
+        mToogleButton = (ToggleButton) findViewById(R.id.buttonEnable);
         mOpenCvCameraView.setCvCameraViewListener(this);
         tvName = (TextView) findViewById(R.id.text1);
         data.add(new String[]{"keypoints1", "keypoints2", "good_matches", "timestamp"});
@@ -192,12 +194,12 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
     }
 
     /**
-     * @param width -  the width of the frames that will be delivered
+     * @param width  -  the width of the frames that will be delivered
      * @param height - the height of the frames that will be delivered
      */
-    public void onCameraViewStarted(int width, int height) {
-        w = width;
-        h = height;
+    public void onCameraViewStarted(final int width, final int height) {
+        final int w = width;
+        final int h = height;
     }
 
     /**
@@ -215,7 +217,7 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
      * @param aInputFrame camera stream
      * @return matrix of output img
      */
-    public Mat recognize(Mat aInputFrame) {
+    public Mat recognize(final Mat aInputFrame) {
         Imgproc.cvtColor(aInputFrame, aInputFrame, Imgproc.COLOR_RGB2GRAY);
         descriptors2 = new Mat();
         keypoints2 = new MatOfKeyPoint();
@@ -224,14 +226,14 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
         descriptor.compute(aInputFrame, keypoints2, descriptors2);
 
         // Matching
-        MatOfDMatch matches = new MatOfDMatch();
+        final MatOfDMatch matches = new MatOfDMatch();
         if (img1.type() == aInputFrame.type()) {
             matcher.match(descriptors1, descriptors2, matches);
         } else {
             return aInputFrame;
         }
 
-        List<DMatch> matchesList = matches.toList();
+        final List<DMatch> matchesList = matches.toList();
 
         Double max_dist = 0.0;
         Double min_dist = 100.0;
@@ -244,17 +246,17 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
                 max_dist = dist;
         }
 
-        LinkedList<DMatch> good_matches = new LinkedList<DMatch>();
+        final LinkedList<DMatch> good_matches = new LinkedList<DMatch>();
 
         for (int i = 0; i < matchesList.size(); i++) {
             if (matchesList.get(i).distance <= (1.5 * min_dist))
                 good_matches.addLast(matchesList.get(i));
         }
 
-        MatOfDMatch goodMatches = new MatOfDMatch();
+        final MatOfDMatch goodMatches = new MatOfDMatch();
         goodMatches.fromList(good_matches);
-        Mat outputImg = new Mat();
-        MatOfByte drawnMatches = new MatOfByte();
+        final Mat outputImg = new Mat();
+        final MatOfByte drawnMatches = new MatOfByte();
 
         if (aInputFrame.empty() || aInputFrame.cols() < 1 || aInputFrame.rows() < 1) {
             return aInputFrame;
@@ -263,11 +265,11 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
         Features2d.drawMatches(img1, keypoints1, aInputFrame, keypoints2, goodMatches, outputImg, GREEN, RED, drawnMatches, Features2d.NOT_DRAW_SINGLE_POINTS);
         Imgproc.resize(outputImg, outputImg, aInputFrame.size());
 
-        Long res = System.currentTimeMillis() - timestamp1;
+        final Long res = System.currentTimeMillis() - timestamp1;
 
         Log.i("time stamp inner: ", res.toString());
 
-        if(dataCounter < MAX_DATA_RECORDING){
+        if (dataCounter < MAX_DATA_RECORDING) {
             String[] dataLine = new String[]{String.valueOf(keypoints1.toList().size()), String.valueOf(keypoints2.toList().size()), String.valueOf(good_matches.size()), String.valueOf(res)};
             data.add(dataLine);
             dataCounter++;
@@ -277,7 +279,6 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
     }
 
     /**
-     *
      * @param inputFrame camera stream
      * @return recognize input frame with rgba method
      */
@@ -285,7 +286,7 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
         this.timestamp1 = System.currentTimeMillis();
 
-        if(this.mToogleButton.isChecked())
+        if (this.mToogleButton.isChecked())
             return recognize(inputFrame.rgba());
         else
             return inputFrame.rgba();
@@ -296,15 +297,16 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
      * @throws IOException if writer cannot be done
      */
     public void exportInCSV(List<String[]> data) throws IOException {
-        File folder = new File(Environment.getExternalStorageDirectory()
-                + "/METRICS");
+        final File folder = new File(Environment.getExternalStorageDirectory()
+                + "/Metrics");
 
         Log.i("debug", folder.getAbsolutePath());
         Log.i("debug", folder.getCanonicalPath());
+
         if (!folder.exists())
             folder.mkdir();
 
-        final String filename = folder.toString() + "/" + "metrics.csv";
+        final String filename = folder.toString() + "/" + "data_metrics_" + AKAZE_ALGORITHM + ".csv";
 
         try (FileOutputStream fos = new FileOutputStream(filename);
              OutputStreamWriter osw = new OutputStreamWriter(fos,
