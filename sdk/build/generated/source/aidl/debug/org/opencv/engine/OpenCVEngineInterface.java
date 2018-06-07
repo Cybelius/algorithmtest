@@ -1,6 +1,6 @@
 /*
  * This file is auto-generated.  DO NOT MODIFY.
- * Original file: /Users/geoffrey/workspace/surfImpl/sdk/java/src/org/opencv/engine/OpenCVEngineInterface.aidl
+ * Original file: /home/alexandreriehl/Repos/algorithmtest/sdk/java/src/org/opencv/engine/OpenCVEngineInterface.aidl
  */
 package org.opencv.engine;
 /**

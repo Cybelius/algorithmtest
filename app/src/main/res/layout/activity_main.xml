@@ -18,18 +18,35 @@
         android:layout_below="@+id/text1"/>
 
     <TextView
+        android:id="@+id/text1"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:gravity="center"
-        android:id="@+id/text1"
-        android:text="ORB / AKAZE TEST"
-        android:textStyle="bold"
-        android:textColor="#ff00ff"
         android:background="#00ff00"
+        android:gravity="center"
+        android:text="ORB / AKAZE TEST"
+        android:textColor="#ff00ff"
         android:textColorHighlight="#000000"
         android:textIsSelectable="true"
         android:textSize="32sp"
-        />
+        android:textStyle="bold"
+        tools:layout_editor_absoluteX="0dp"
+        tools:layout_editor_absoluteY="0dp" />
+
+    <ToggleButton
+        android:id="@+id/buttonEnable"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="280dp"
+        android:layout_marginTop="424dp"
+        android:text="Button"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintStart_toStartOf="@+id/text1"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="1.0" />
 
     <!--<TextView-->
         <!--android:layout_width="wrap_content"-->

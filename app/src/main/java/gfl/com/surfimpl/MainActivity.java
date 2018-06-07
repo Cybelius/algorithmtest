@@ -17,6 +17,7 @@ import android.util.Log;
 import android.view.SurfaceView;
 import android.view.WindowManager;
 import android.widget.TextView;
+import android.widget.ToggleButton;
 
 import com.opencsv.CSVWriter;
 
@@ -48,6 +49,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.TooManyListenersException;
 import java.util.stream.Collectors;
 
 /**
@@ -58,6 +60,7 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
     private static final String TAG = "OCVSample::Activity";
     private int w, h;
     private CameraBridgeViewBase mOpenCvCameraView;
+    private ToggleButton mToogleButton;
     TextView tvName;
     Scalar RED = new Scalar(255, 0, 0);
     Scalar GREEN = new Scalar(0, 255, 0);
@@ -69,7 +72,10 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
     MatOfKeyPoint keypoints1, keypoints2;
 
     Long timestamp1;
-    List<String[]> data = new ArrayList<>();
+
+    static Integer MAX_DATA_RECORDING = 10;
+    Integer dataCounter = 0;
+    List<String[]> data = new ArrayList<String[]>();
 
     int index = 0;
 
@@ -147,8 +153,10 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
         mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.tutorial1_activity_java_surface_view);
         mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
+        mToogleButton = (ToggleButton)findViewById(R.id.buttonEnable);
         mOpenCvCameraView.setCvCameraViewListener(this);
         tvName = (TextView) findViewById(R.id.text1);
+        data.add(new String[]{"keypoints1", "keypoints2", "good_matches", "timestamp"});
     }
 
     /**
@@ -196,6 +204,11 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
      */
     public void onCameraViewStopped() {
         //export csv
+        try {
+            exportInCSV(this.data);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -253,8 +266,12 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
         Long res = System.currentTimeMillis() - timestamp1;
 
         Log.i("time stamp inner: ", res.toString());
-        String[] test = new String[index++];
-        data.add(test);
+
+        if(dataCounter < MAX_DATA_RECORDING){
+            String[] dataLine = new String[]{String.valueOf(keypoints1.toList().size()), String.valueOf(keypoints2.toList().size()), String.valueOf(good_matches.size()), String.valueOf(res)};
+            data.add(dataLine);
+            dataCounter++;
+        }
 
         return outputImg;
     }
@@ -268,7 +285,10 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
         this.timestamp1 = System.currentTimeMillis();
 
-        return recognize(inputFrame.rgba());
+        if(this.mToogleButton.isChecked())
+            return recognize(inputFrame.rgba());
+        else
+            return inputFrame.rgba();
     }
 
     /**
@@ -277,13 +297,12 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
      */
     public void exportInCSV(List<String[]> data) throws IOException {
         File folder = new File(Environment.getExternalStorageDirectory()
-                + "/Folder");
+                + "/METRICS");
 
-        boolean var = false;
+        Log.i("debug", folder.getAbsolutePath());
+        Log.i("debug", folder.getCanonicalPath());
         if (!folder.exists())
-            var = folder.mkdir();
-
-        System.out.println("" + var);
+            folder.mkdir();
 
         final String filename = folder.toString() + "/" + "metrics.csv";
 
@@ -293,79 +312,6 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
              CSVWriter writer = new CSVWriter(osw)) {
 
             writer.writeAll(data);
-//            writer.close();
-        }
-    }
-
-    /**
-     * //TODO: to remove when done
-     * @param entries export data into csv files (test method)
-     * @throws IOException launch
-     */
-    public void exportInEntriesCSV(LinkedList<DMatch> entries) throws IOException {
-        File folder = new File(Environment.getExternalStorageDirectory()
-                + "/Folder");
-
-        boolean var = false;
-        if (!folder.exists())
-            var = folder.mkdir();
-
-        System.out.println("" + var);
-
-        final String filename = folder.toString() + "/" + "good_matches.csv";
-
-        final List<String> items1 = new ArrayList<>();
-        final List<String> items2 = new ArrayList<>();
-        final List<String> items3 = new ArrayList<>();
-        final List<String> items4 = new ArrayList<>();
-
-        for(DMatch entry : entries) {
-            items1.add(String.valueOf(entry.queryIdx));
-            items2.add(String.valueOf(entry.trainIdx));
-            items3.add(String.valueOf(entry.imgIdx));
-            items4.add(String.valueOf(entry.distance));
-        }
-
-        List<String[]> data = new ArrayList<>();
-
-        String[] array1 = new String[items1.size()];
-        for(int i = 0; i < items1.size(); i++) {
-            array1[i] = items1.get(i);
-        }
-
-        data.add(array1);
-
-
-        String[] array2 = new String[items2.size()];
-        for(int i = 0; i < items2.size(); i++) {
-            array2[i] = items2.get(i);
-        }
-
-        data.add(array2);
-
-
-        String[] array3 = new String[items3.size()];
-        for(int i = 0; i < items3.size(); i++) {
-            array3[i] = items3.get(i);
-        }
-
-        data.add(array3);
-
-
-        String[] array4 = new String[items4.size()];
-        for(int i = 0; i < items4.size(); i++) {
-            array4[i] = items4.get(i);
-        }
-
-        data.add(array4);
-
-        try (FileOutputStream fos = new FileOutputStream(filename);
-             OutputStreamWriter osw = new OutputStreamWriter(fos,
-                     StandardCharsets.UTF_8);
-             CSVWriter writer = new CSVWriter(osw)) {
-
-            writer.writeAll(data);
-//            writer.close();
         }
     }
 }
