@@ -1,15 +1,24 @@
 package gfl.com.surfimpl;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.res.AssetManager;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.Environment;
+import android.os.Handler;
+import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.SurfaceView;
 import android.view.WindowManager;
 import android.widget.TextView;
+
+import com.opencsv.CSVWriter;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
@@ -24,15 +33,26 @@ import org.opencv.core.MatOfKeyPoint;
 import org.opencv.core.Scalar;
 import org.opencv.features2d.DescriptorExtractor;
 import org.opencv.features2d.DescriptorMatcher;
+import org.opencv.features2d.FastFeatureDetector;
 import org.opencv.features2d.FeatureDetector;
 import org.opencv.features2d.Features2d;
 import org.opencv.imgproc.Imgproc;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
+/**
+ * Created by GFL
+ */
 public class MainActivity extends Activity implements CameraBridgeViewBase.CvCameraViewListener2 {
 
     private static final String TAG = "OCVSample::Activity";
@@ -48,6 +68,11 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
     Mat img1;
     MatOfKeyPoint keypoints1, keypoints2;
 
+    Long timestamp1;
+    List<String[]> data = new ArrayList<>();
+
+    int index = 0;
+
     static {
         if (!OpenCVLoader.initDebug())
             Log.d("ERROR", "Unable to load OpenCV");
@@ -55,6 +80,8 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
             Log.d("SUCCESS", "OpenCV loaded");
     }
 
+    /**
+     */
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
         public void onManagerConnected(int status) {
@@ -77,11 +104,16 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
         }
     };
 
+    /**
+     */
     private void initializeOpenCVDependencies() throws IOException {
         mOpenCvCameraView.enableView();
+
         detector = FeatureDetector.create(FeatureDetector.AKAZE);
         descriptor = DescriptorExtractor.create(DescriptorExtractor.AKAZE);
+
         matcher = DescriptorMatcher.create(DescriptorMatcher.BRUTEFORCE_HAMMING);
+
         img1 = new Mat();
         AssetManager assetManager = getAssets();
         InputStream istr = assetManager.open("a.jpeg");
@@ -89,14 +121,15 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
         Utils.bitmapToMat(bitmap, img1);
         Imgproc.cvtColor(img1, img1, Imgproc.COLOR_RGB2GRAY);
         img1.convertTo(img1, 0); //converting the image to match with the type of the cameras image
+
         descriptors1 = new Mat();
         keypoints1 = new MatOfKeyPoint();
         detector.detect(img1, keypoints1);
         descriptor.compute(img1, keypoints1, descriptors1);
-
     }
 
-
+    /**
+     */
     public MainActivity() {
         Log.i(TAG, "Instantiated new " + this.getClass());
     }
@@ -111,13 +144,15 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_main);
+
         mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.tutorial1_activity_java_surface_view);
         mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
         mOpenCvCameraView.setCvCameraViewListener(this);
         tvName = (TextView) findViewById(R.id.text1);
-
     }
 
+    /**
+     */
     @Override
     public void onPause() {
         super.onPause();
@@ -125,6 +160,8 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
             mOpenCvCameraView.disableView();
     }
 
+    /**
+     */
     @Override
     public void onResume() {
         super.onResume();
@@ -137,27 +174,40 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
         }
     }
 
+    /**
+     * on destroy view
+     */
     public void onDestroy() {
         super.onDestroy();
         if (mOpenCvCameraView != null)
             mOpenCvCameraView.disableView();
     }
 
+    /**
+     * @param width -  the width of the frames that will be delivered
+     * @param height - the height of the frames that will be delivered
+     */
     public void onCameraViewStarted(int width, int height) {
         w = width;
         h = height;
     }
 
+    /**
+     */
     public void onCameraViewStopped() {
+        //export csv
     }
 
+    /**
+     * @param aInputFrame camera stream
+     * @return matrix of output img
+     */
     public Mat recognize(Mat aInputFrame) {
-
         Imgproc.cvtColor(aInputFrame, aInputFrame, Imgproc.COLOR_RGB2GRAY);
         descriptors2 = new Mat();
-//        descriptors1 = new Mat();
         keypoints2 = new MatOfKeyPoint();
         detector.detect(aInputFrame, keypoints2);
+
         descriptor.compute(aInputFrame, keypoints2, descriptors2);
 
         // Matching
@@ -167,6 +217,7 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
         } else {
             return aInputFrame;
         }
+
         List<DMatch> matchesList = matches.toList();
 
         Double max_dist = 0.0;
@@ -181,6 +232,7 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
         }
 
         LinkedList<DMatch> good_matches = new LinkedList<DMatch>();
+
         for (int i = 0; i < matchesList.size(); i++) {
             if (matchesList.get(i).distance <= (1.5 * min_dist))
                 good_matches.addLast(matchesList.get(i));
@@ -190,16 +242,130 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
         goodMatches.fromList(good_matches);
         Mat outputImg = new Mat();
         MatOfByte drawnMatches = new MatOfByte();
+
         if (aInputFrame.empty() || aInputFrame.cols() < 1 || aInputFrame.rows() < 1) {
             return aInputFrame;
         }
+
         Features2d.drawMatches(img1, keypoints1, aInputFrame, keypoints2, goodMatches, outputImg, GREEN, RED, drawnMatches, Features2d.NOT_DRAW_SINGLE_POINTS);
         Imgproc.resize(outputImg, outputImg, aInputFrame.size());
+
+        Long res = System.currentTimeMillis() - timestamp1;
+
+        Log.i("time stamp inner: ", res.toString());
+        String[] test = new String[index++];
+        data.add(test);
 
         return outputImg;
     }
 
+    /**
+     *
+     * @param inputFrame camera stream
+     * @return recognize input frame with rgba method
+     */
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
+
+        this.timestamp1 = System.currentTimeMillis();
+
         return recognize(inputFrame.rgba());
+    }
+
+    /**
+     * @param data list of data to write in csv
+     * @throws IOException if writer cannot be done
+     */
+    public void exportInCSV(List<String[]> data) throws IOException {
+        File folder = new File(Environment.getExternalStorageDirectory()
+                + "/Folder");
+
+        boolean var = false;
+        if (!folder.exists())
+            var = folder.mkdir();
+
+        System.out.println("" + var);
+
+        final String filename = folder.toString() + "/" + "metrics.csv";
+
+        try (FileOutputStream fos = new FileOutputStream(filename);
+             OutputStreamWriter osw = new OutputStreamWriter(fos,
+                     StandardCharsets.UTF_8);
+             CSVWriter writer = new CSVWriter(osw)) {
+
+            writer.writeAll(data);
+//            writer.close();
+        }
+    }
+
+    /**
+     * //TODO: to remove when done
+     * @param entries export data into csv files (test method)
+     * @throws IOException launch
+     */
+    public void exportInEntriesCSV(LinkedList<DMatch> entries) throws IOException {
+        File folder = new File(Environment.getExternalStorageDirectory()
+                + "/Folder");
+
+        boolean var = false;
+        if (!folder.exists())
+            var = folder.mkdir();
+
+        System.out.println("" + var);
+
+        final String filename = folder.toString() + "/" + "good_matches.csv";
+
+        final List<String> items1 = new ArrayList<>();
+        final List<String> items2 = new ArrayList<>();
+        final List<String> items3 = new ArrayList<>();
+        final List<String> items4 = new ArrayList<>();
+
+        for(DMatch entry : entries) {
+            items1.add(String.valueOf(entry.queryIdx));
+            items2.add(String.valueOf(entry.trainIdx));
+            items3.add(String.valueOf(entry.imgIdx));
+            items4.add(String.valueOf(entry.distance));
+        }
+
+        List<String[]> data = new ArrayList<>();
+
+        String[] array1 = new String[items1.size()];
+        for(int i = 0; i < items1.size(); i++) {
+            array1[i] = items1.get(i);
+        }
+
+        data.add(array1);
+
+
+        String[] array2 = new String[items2.size()];
+        for(int i = 0; i < items2.size(); i++) {
+            array2[i] = items2.get(i);
+        }
+
+        data.add(array2);
+
+
+        String[] array3 = new String[items3.size()];
+        for(int i = 0; i < items3.size(); i++) {
+            array3[i] = items3.get(i);
+        }
+
+        data.add(array3);
+
+
+        String[] array4 = new String[items4.size()];
+        for(int i = 0; i < items4.size(); i++) {
+            array4[i] = items4.get(i);
+        }
+
+        data.add(array4);
+
+        try (FileOutputStream fos = new FileOutputStream(filename);
+             OutputStreamWriter osw = new OutputStreamWriter(fos,
+                     StandardCharsets.UTF_8);
+             CSVWriter writer = new CSVWriter(osw)) {
+
+            writer.writeAll(data);
+//            writer.close();
+        }
     }
 }
